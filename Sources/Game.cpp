@@ -5,6 +5,8 @@
 #include "pch.h"
 #include "Game.h"
 
+#include <iostream>
+
 #include "PerlinNoise.hpp"
 #include "Engine/Shader.h"
 
@@ -20,7 +22,21 @@ Shader* basicShader;
 
 ComPtr<ID3D11Buffer> vertexBuffer;
 ComPtr<ID3D11Buffer> indexBuffer;
+ComPtr<ID3D11Buffer> matrixBuffer;
 ComPtr<ID3D11InputLayout> inputLayout;
+
+float cameraDistance = 2.0f;
+float cameraRotation = 0.0f;
+float cameraSpeed = 1.f;
+
+struct MatrixData
+{
+	Matrix mModel;
+	Matrix mView;
+	Matrix mProjection;
+};
+
+MatrixData dataMatrix;
 
 // Game
 Game::Game() noexcept(false) {
@@ -90,6 +106,16 @@ void Game::Initialize(HWND window, int width, int height) {
 	D3D11_SUBRESOURCE_DATA subresourceDataIndex = {};
 	subresourceDataIndex.pSysMem = indexArray.data();
 	device->CreateBuffer(&bufferDescIndex, &subresourceDataIndex, indexBuffer.ReleaseAndGetAddressOf());
+
+	// Matrix transformation
+	dataMatrix.mModel = Matrix::CreateWorld(Vector3(0,0,0), Vector3::Forward, Vector3::Up).Transpose();
+	dataMatrix.mView = Matrix::CreateLookAt(Vector3(0, 0, cameraDistance), Vector3(0, 0, 0), Vector3::Up).Transpose();
+	dataMatrix.mProjection = Matrix::CreatePerspectiveFieldOfView(90, 16.0f / 9.0f, 0.1, 1000.0).Transpose();
+
+	CD3D11_BUFFER_DESC bufferDescMatrix(sizeof(MatrixData), D3D11_BIND_CONSTANT_BUFFER);
+	D3D11_SUBRESOURCE_DATA subresourceDataMatrix = {};
+	subresourceDataMatrix.pSysMem = &dataMatrix;
+	device->CreateBuffer(&bufferDescMatrix, &subresourceDataMatrix, matrixBuffer.ReleaseAndGetAddressOf());
 }
 
 void Game::Tick() {
@@ -104,6 +130,10 @@ void Game::Tick() {
 void Game::Update(DX::StepTimer const& timer) {
 	auto const kb = m_keyboard->GetState();
 	auto const ms = m_mouse->GetState();
+
+	cameraRotation += cameraSpeed*timer.GetElapsedSeconds();
+	dataMatrix.mView = Matrix::CreateLookAt(Vector3(cameraDistance*cos(cameraRotation), 0, cameraDistance*sin(cameraRotation)), Vector3(0, 0, 0), Vector3::Up).Transpose();
+	m_deviceResources->GetD3DDeviceContext()->UpdateSubresource(matrixBuffer.Get(), 0, nullptr, &dataMatrix,0, 0);
 	
 	// add kb/mouse interact here
 	
@@ -140,9 +170,12 @@ void Game::Render() {
 	UINT offsets[] = { 0 };
 	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);
 
+	ID3D11Buffer* cbs[] = { matrixBuffer.Get() };
+	context->VSSetConstantBuffers(0, 1, cbs);
+
 	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 	context->DrawIndexed(6, 0, 0);
-
+	
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
 }
