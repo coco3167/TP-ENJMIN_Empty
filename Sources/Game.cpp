@@ -19,6 +19,7 @@ using Microsoft::WRL::ComPtr;
 Shader* basicShader;
 
 ComPtr<ID3D11Buffer> vertexBuffer;
+ComPtr<ID3D11Buffer> indexBuffer;
 ComPtr<ID3D11InputLayout> inputLayout;
 
 // Game
@@ -58,6 +59,37 @@ void Game::Initialize(HWND window, int width, int height) {
 		inputLayout.ReleaseAndGetAddressOf());
 
 	// TP: allouer vertexBuffer ici
+	/*std::vector<float> triforceArray =
+	{
+		0, 0.6f, 0,
+		0.3f, 0, 0,
+		-0.3f, 0, 0,
+		0, -0.6f, 0,
+		-0.6f, -0.6f, 0,
+		0.6f, -0.6f, 0,
+	};*/
+	std::vector<float> vertexArray =
+	{
+		-0.5f, 0.5f, 0.0f,
+		0.5f, -0.5f, 0.0f,
+		-0.5f, -0.5f, 0.0f,
+		0.5f, 0.5f, 0.0f,
+	};
+	std::vector<UINT> indexArray =
+	{
+		0, 1, 2,
+		0, 3, 1,
+	};
+	
+	CD3D11_BUFFER_DESC bufferDescVertex(vertexArray.size()*sizeof(float), D3D11_BIND_VERTEX_BUFFER);
+	D3D11_SUBRESOURCE_DATA subresourceDataVertex = {};
+	subresourceDataVertex.pSysMem = vertexArray.data();
+	device->CreateBuffer(&bufferDescVertex, &subresourceDataVertex, vertexBuffer.ReleaseAndGetAddressOf());
+
+	CD3D11_BUFFER_DESC bufferDescIndex(indexArray.size()*sizeof(UINT), D3D11_BIND_INDEX_BUFFER);
+	D3D11_SUBRESOURCE_DATA subresourceDataIndex = {};
+	subresourceDataIndex.pSysMem = indexArray.data();
+	device->CreateBuffer(&bufferDescIndex, &subresourceDataIndex, indexBuffer.ReleaseAndGetAddressOf());
 }
 
 void Game::Tick() {
@@ -92,7 +124,7 @@ void Game::Render() {
 	auto depthStencil = m_deviceResources->GetDepthStencilView();
 	auto const viewport = m_deviceResources->GetScreenViewport();
 
-	context->ClearRenderTargetView(renderTarget, Colors::CornflowerBlue);
+	context->ClearRenderTargetView(renderTarget, Colors::Green);
 	context->ClearDepthStencilView(depthStencil, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	context->RSSetViewports(1, &viewport);
 	context->OMSetRenderTargets(1, &renderTarget, depthStencil);
@@ -103,6 +135,13 @@ void Game::Render() {
 	basicShader->Apply(m_deviceResources.get());
 
 	// TP: Tracer votre vertex buffer ici
+	ID3D11Buffer* vbs[] = { vertexBuffer.Get() };
+	UINT strides[] = { sizeof(float) * 3 };
+	UINT offsets[] = { 0 };
+	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);
+
+	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	context->DrawIndexed(6, 0, 0);
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
