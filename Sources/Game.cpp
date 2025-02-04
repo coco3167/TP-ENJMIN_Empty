@@ -10,6 +10,7 @@
 #include "PerlinNoise.hpp"
 #include "Engine/Shader.h"
 #include "Buffers.h"
+#include "Cube.h"
 #include "Engine/VertexLayout.h"
 
 
@@ -33,13 +34,14 @@ struct CameraData
 	Matrix mProjection;
 };
 
-VertexBuffer<VertexLayout_Position> vertexBuffer;
-IndexBuffer indexBuffer;
+//VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
+//IndexBuffer indexBuffer;
 
 ConstantBuffer<ModelData> modelBuffer;
 ConstantBuffer<CameraData> cameraBuffer;
 
 ComPtr<ID3D11InputLayout> inputLayout;
+Cube cube;
 
 float cameraDistance = 2.0f;
 float cameraRotation = 0.0f;
@@ -74,14 +76,6 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	auto device = m_deviceResources->GetD3DDevice();
 
-	const std::vector<D3D11_INPUT_ELEMENT_DESC> InputElementDescs = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-	device->CreateInputLayout(
-		InputElementDescs.data(), InputElementDescs.size(),
-		basicShader->vsBytecode.data(), basicShader->vsBytecode.size(),
-		inputLayout.ReleaseAndGetAddressOf());
-
 	// TP: allouer vertexBuffer ici
 	/*std::vector<float> triforceArray =
 	{
@@ -93,7 +87,7 @@ void Game::Initialize(HWND window, int width, int height) {
 		0.6f, -0.6f, 0,
 	};*/
 
-	GenerateInputLayout<VertexLayout_Position>(m_deviceResources.get(), basicShader);
+	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
 	
 	/*std::vector<float> vertexArray =
 	{
@@ -102,12 +96,16 @@ void Game::Initialize(HWND window, int width, int height) {
 		-0.5f, -0.5f, 0.0f,
 		0.5f, 0.5f, 0.0f,
 	};*/
+
+	cube.Generate(Vector3(0,0,-0.5f));
+	cube.Create(m_deviceResources.get());
 	
-	vertexBuffer.PushVertex({{-0.5f, 0.5f, 0.0f, 0.0f}});
-	vertexBuffer.PushVertex({{0.5f, -0.5f, 0.0f, 0.0f}});
-	vertexBuffer.PushVertex({{-0.5f, -0.5f, 0.0f, 0.0f}});
-	vertexBuffer.PushVertex({{0.5f, 0.5f, 0.0f, 0.0f}});
-	vertexBuffer.Create(m_deviceResources.get());
+	//vertexBuffer.PushVertex({{-0.5f, 0.5f, 0.0f, 0.0f}, {0.f,1.f}});
+	//vertexBuffer.PushVertex({{0.5f, -0.5f, 0.0f, 0.0f}, {1.f, 0.f}});
+	//vertexBuffer.PushVertex({{-0.5f, -0.5f, 0.0f, 0.0f}, {0.f, 0.f}});
+	//vertexBuffer.PushVertex({{0.5f, 0.5f, 0.0f, 0.0f}, {1.f, 1.f}});
+	//vertexBuffer.Create(m_deviceResources.get());
+	
 	/* CD3D11_BUFFER_DESC bufferDescVertex(vertexArray.size()*sizeof(float), D3D11_BIND_VERTEX_BUFFER);
 	D3D11_SUBRESOURCE_DATA subresourceDataVertex = {};
 	subresourceDataVertex.pSysMem = vertexArray.data();
@@ -119,9 +117,9 @@ void Game::Initialize(HWND window, int width, int height) {
 		0, 3, 1,
 	};*/
 	
-	indexBuffer.PushTriangle(0,1,2);
-	indexBuffer.PushTriangle(0,3,1);
-	indexBuffer.Create(m_deviceResources.get());
+	//indexBuffer.PushTriangle(0,1,2);
+	//indexBuffer.PushTriangle(0,3,1);
+	//indexBuffer.Create(m_deviceResources.get());
 	
 	/*CD3D11_BUFFER_DESC bufferDescIndex(indexArray.size()*sizeof(uint32_t), D3D11_BIND_INDEX_BUFFER);
 	D3D11_SUBRESOURCE_DATA subresourceDataIndex = {};
@@ -167,7 +165,7 @@ void Game::Update(DX::StepTimer const& timer) {
 	auto const ms = m_mouse->GetState();
 
 	cameraRotation += cameraSpeed*timer.GetElapsedSeconds();
-	cameraBuffer.m_data.mView = Matrix::CreateLookAt(Vector3(cameraDistance*cos(cameraRotation), 0, cameraDistance*sin(cameraRotation)), Vector3(0, 0, 0), Vector3::Up).Transpose();
+	cameraBuffer.m_data.mView = Matrix::CreateLookAt(Vector3(cameraDistance*cos(cameraRotation), 1.5f, cameraDistance*sin(cameraRotation)), Vector3(0, 0, 0), Vector3::Up).Transpose();
 	
 	// add kb/mouse interact here
 	
@@ -196,7 +194,7 @@ void Game::Render() {
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(inputLayout.Get());
 
-	ApplyInputLayout<VertexLayout_Position>(m_deviceResources.get());
+	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 	
 	basicShader->Apply(m_deviceResources.get());
 
@@ -206,8 +204,9 @@ void Game::Render() {
 	UINT offsets[] = { 0 };
 	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);*/
 
-	vertexBuffer.Apply(m_deviceResources.get());
-	indexBuffer.Apply(m_deviceResources.get());
+	//vertexBuffer.Apply(m_deviceResources.get());
+	cube.Apply(m_deviceResources.get());
+	//indexBuffer.Apply(m_deviceResources.get());
 
 	modelBuffer.Update(m_deviceResources.get());
 	cameraBuffer.Update(m_deviceResources.get());
@@ -220,7 +219,7 @@ void Game::Render() {
 	context->VSSetConstantBuffers(0, 2, cbs);*/
 
 	
-	context->DrawIndexed(indexBuffer.Size(), 0, 0);
+	context->DrawIndexed(cube.indexBuffer.Size(), 0, 0);
 	
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();

@@ -1,4 +1,6 @@
 #pragma once
+#include "Buffers.h"
+#include "Engine/VertexLayout.h"
 
 using namespace  DirectX::SimpleMath;
 
@@ -6,12 +8,13 @@ using namespace  DirectX::SimpleMath;
 class Cube
 {
 private:
-    ID3D11Device1* device;
+    int faceIndex = 0;
 public:
-    Cube(ID3D11Device1* device);
-    ~Cube();
-    
-    std::vector<Microsoft::WRL::ComPtr<ID3D11Buffer>> vertexBuffers;
+    VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
+    IndexBuffer indexBuffer;
 
+    void Generate(const Vector3& position);
     void AddFace(const Vector3& pos, const Vector3& up, const Vector3& right);
+    void Create(DeviceResources* deviceResources);
+    void Apply(DeviceResources* deviceResources);
 };
