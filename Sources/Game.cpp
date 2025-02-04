@@ -24,10 +24,7 @@ using Microsoft::WRL::ComPtr;
 // Global stuff
 Shader* basicShader;
 
-struct ModelData
-{
-	Matrix mModel;
-};
+
 struct CameraData
 {
 	Matrix mView;
@@ -37,7 +34,6 @@ struct CameraData
 //VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
 //IndexBuffer indexBuffer;
 
-ConstantBuffer<ModelData> modelBuffer;
 ConstantBuffer<CameraData> cameraBuffer;
 
 ComPtr<ID3D11InputLayout> inputLayout;
@@ -97,7 +93,7 @@ void Game::Initialize(HWND window, int width, int height) {
 		0.5f, 0.5f, 0.0f,
 	};*/
 
-	cube.Generate(Vector3(0,0,-0.5f));
+	cube.Generate(Vector3(0,0,0));
 	cube.Create(m_deviceResources.get());
 	
 	//vertexBuffer.PushVertex({{-0.5f, 0.5f, 0.0f, 0.0f}, {0.f,1.f}});
@@ -127,11 +123,9 @@ void Game::Initialize(HWND window, int width, int height) {
 	device->CreateBuffer(&bufferDescIndex, &subresourceDataIndex, indexBuffer.ReleaseAndGetAddressOf());*/
 
 	// Matrix transformation
-	modelBuffer.Create(m_deviceResources.get());
-	ModelData modelData;
-	modelData.mModel = Matrix::CreateWorld(Vector3(0,0,0), Vector3::Forward, Vector3::Up).Transpose();
-	modelBuffer.m_data = modelData;
-	
+	cube.modelData.Create(m_deviceResources.get());
+	cube.modelData.m_data.mModel = Matrix::CreateTranslation(Vector3(-0.5, -0.5, 0.5)).Transpose();
+	//modelData.mModel = Matrix::Identity;
 	
 	/*CD3D11_BUFFER_DESC bufferDescModel(sizeof(CameraData), D3D11_BIND_CONSTANT_BUFFER);
 	D3D11_SUBRESOURCE_DATA subresourceDataModel = {};
@@ -165,7 +159,7 @@ void Game::Update(DX::StepTimer const& timer) {
 	auto const ms = m_mouse->GetState();
 
 	cameraRotation += cameraSpeed*timer.GetElapsedSeconds();
-	cameraBuffer.m_data.mView = Matrix::CreateLookAt(Vector3(cameraDistance*cos(cameraRotation), 1.5f, cameraDistance*sin(cameraRotation)), Vector3(0, 0, 0), Vector3::Up).Transpose();
+	cameraBuffer.m_data.mView = Matrix::CreateLookAt(Vector3(cameraDistance*cos(cameraRotation), 0, cameraDistance*sin(cameraRotation)), Vector3(0, 0, 0), Vector3::Up).Transpose();
 	
 	// add kb/mouse interact here
 	
@@ -208,10 +202,10 @@ void Game::Render() {
 	cube.Apply(m_deviceResources.get());
 	//indexBuffer.Apply(m_deviceResources.get());
 
-	modelBuffer.Update(m_deviceResources.get());
+	cube.modelData.Update(m_deviceResources.get());
 	cameraBuffer.Update(m_deviceResources.get());
 
-	modelBuffer.ApplyToVS(m_deviceResources.get());
+	cube.modelData.ApplyToVS(m_deviceResources.get());
 	cameraBuffer.ApplyToVS(m_deviceResources.get(), 1);
 	/*m_deviceResources->GetD3DDeviceContext()->UpdateSubresource(cameraBuffer.Get(), 0, nullptr, &cameraData,0, 0);
 	

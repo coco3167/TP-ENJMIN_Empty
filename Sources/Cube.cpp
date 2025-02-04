@@ -4,12 +4,12 @@
 
 void Cube::Generate(const Vector3& position)
 {
-    AddFace(position, Vector3::Up, Vector3::Right);
-    AddFace(position + Vector3::Right, Vector3::Up, Vector3::Forward);
-    AddFace(position + Vector3::Forward, Vector3::Up, Vector3::Backward);
-    AddFace(position + Vector3(1,0,-1), Vector3::Up, Vector3::Left);
-    AddFace(position + Vector3::Up, Vector3::Forward, Vector3::Right);
-    AddFace(position + Vector3::Forward, Vector3::Backward, Vector3::Right);
+    AddFace(position, Vector3::Up, Vector3::Right);                                 //Forward
+    AddFace(position + Vector3::Right, Vector3::Up, Vector3::Forward);         //Right
+    AddFace(position + Vector3::Forward, Vector3::Up, Vector3::Backward);      //Left
+    AddFace(position + Vector3(1,0,-1), Vector3::Up, Vector3::Left);  //Backward
+    AddFace(position + Vector3::Up, Vector3::Forward, Vector3::Right);           //Top
+    AddFace(position + Vector3::Forward, Vector3::Backward, Vector3::Right);     //Bottom
 }
 
 void Cube::AddFace(const Vector3& pos, const Vector3& up, const Vector3& right)
