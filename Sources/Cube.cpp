@@ -14,10 +14,10 @@ void Cube::Generate(const Vector3& position)
 
 void Cube::AddFace(const Vector3& pos, const Vector3& up, const Vector3& right)
 {
-    vertexBuffer.PushVertex({{pos}, {0,0}});
-    vertexBuffer.PushVertex({{pos + up}, {0,1}});
-    vertexBuffer.PushVertex({{pos + right}, {1,0}});
-    vertexBuffer.PushVertex({{pos + up + right}, {1,1}});
+    vertexBuffer.PushVertex({{pos}, {1,1}});
+    vertexBuffer.PushVertex({{pos + up}, {1,0}});
+    vertexBuffer.PushVertex({{pos + right}, {0,1}});
+    vertexBuffer.PushVertex({{pos + up + right}, {0,0}});
     indexBuffer.PushTriangle(faceIndex,faceIndex+1,faceIndex+2);
     indexBuffer.PushTriangle(faceIndex+1,faceIndex+3,faceIndex+2);
     faceIndex += 4;
@@ -33,4 +33,12 @@ void Cube::Apply(DeviceResources* deviceResources)
 {
     vertexBuffer.Apply(deviceResources);
     indexBuffer.Apply(deviceResources);
+}
+
+void Cube::Draw(DeviceResources* deviceResources)
+{
+    vertexBuffer.Apply(deviceResources, 0);
+    indexBuffer.Apply(deviceResources);
+
+    deviceResources->GetD3DDeviceContext()->DrawIndexed(indexBuffer.Size(), 0, 0);
 }

@@ -23,4 +23,5 @@ public:
     void AddFace(const Vector3& pos, const Vector3& up, const Vector3& right);
     void Create(DeviceResources* deviceResources);
     void Apply(DeviceResources* deviceResources);
+    void Draw(DeviceResources* deviceResources);
 };

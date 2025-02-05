@@ -10,7 +10,9 @@
 #include "PerlinNoise.hpp"
 #include "Engine/Shader.h"
 #include "Buffers.h"
+#include "Camera.h"
 #include "Cube.h"
+#include "Engine/Texture.h"
 #include "Engine/VertexLayout.h"
 
 
@@ -25,19 +27,14 @@ using Microsoft::WRL::ComPtr;
 Shader* basicShader;
 
 
-struct CameraData
-{
-	Matrix mView;
-	Matrix mProjection;
-};
-
 //VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
 //IndexBuffer indexBuffer;
 
-ConstantBuffer<CameraData> cameraBuffer;
+Camera camera(90,1);
 
 ComPtr<ID3D11InputLayout> inputLayout;
-Cube cube;
+std::vector<Cube> cubes;
+Texture texture(L"terrain");
 
 float cameraDistance = 2.0f;
 float cameraRotation = 0.0f;
@@ -72,6 +69,8 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	auto device = m_deviceResources->GetD3DDevice();
 
+	texture.Create(m_deviceResources.get());
+
 	// TP: allouer vertexBuffer ici
 	/*std::vector<float> triforceArray =
 	{
@@ -93,14 +92,30 @@ void Game::Initialize(HWND window, int width, int height) {
 		0.5f, 0.5f, 0.0f,
 	};*/
 
-	cube.Generate(Vector3(0,0,0));
-	cube.Create(m_deviceResources.get());
+	for (int x = -5; x < 5; ++x)
+	{
+		for (int y = -5; y < 5; ++y)
+		{
+			for (int z = -5; z < 5; ++z)
+			{
+				Cube& newChunk = cubes.emplace_back();
+				newChunk.Generate(Vector3{x * 2.0f, y * 2.0f, z * 2.0f });
+				newChunk.Create(m_deviceResources.get());
+
+				newChunk.modelData.Create(m_deviceResources.get());
+				newChunk.modelData.m_data.mModel = Matrix::CreateTranslation(Vector3(-0.5, -0.5, 0.5)).Transpose();
+			}
+		}
+	}
+
+	//cube.Generate(Vector3(0,0,0));
+	//cube.Create(m_deviceResources.get());
 	
-	//vertexBuffer.PushVertex({{-0.5f, 0.5f, 0.0f, 0.0f}, {0.f,1.f}});
-	//vertexBuffer.PushVertex({{0.5f, -0.5f, 0.0f, 0.0f}, {1.f, 0.f}});
-	//vertexBuffer.PushVertex({{-0.5f, -0.5f, 0.0f, 0.0f}, {0.f, 0.f}});
-	//vertexBuffer.PushVertex({{0.5f, 0.5f, 0.0f, 0.0f}, {1.f, 1.f}});
-	//vertexBuffer.Create(m_deviceResources.get());
+	/*vertexBuffer.PushVertex({{-0.5f, 0.5f, 0.0f, 0.0f}, {0.f,1.f}});
+	vertexBuffer.PushVertex({{0.5f, -0.5f, 0.0f, 0.0f}, {1.f, 0.f}});
+	vertexBuffer.PushVertex({{-0.5f, -0.5f, 0.0f, 0.0f}, {0.f, 0.f}});
+	vertexBuffer.PushVertex({{0.5f, 0.5f, 0.0f, 0.0f}, {1.f, 1.f}});
+	vertexBuffer.Create(m_deviceResources.get());*/
 	
 	/* CD3D11_BUFFER_DESC bufferDescVertex(vertexArray.size()*sizeof(float), D3D11_BIND_VERTEX_BUFFER);
 	D3D11_SUBRESOURCE_DATA subresourceDataVertex = {};
@@ -113,9 +128,9 @@ void Game::Initialize(HWND window, int width, int height) {
 		0, 3, 1,
 	};*/
 	
-	//indexBuffer.PushTriangle(0,1,2);
-	//indexBuffer.PushTriangle(0,3,1);
-	//indexBuffer.Create(m_deviceResources.get());
+	/*indexBuffer.PushTriangle(0,1,2);
+	indexBuffer.PushTriangle(0,3,1);
+	indexBuffer.Create(m_deviceResources.get());*/
 	
 	/*CD3D11_BUFFER_DESC bufferDescIndex(indexArray.size()*sizeof(uint32_t), D3D11_BIND_INDEX_BUFFER);
 	D3D11_SUBRESOURCE_DATA subresourceDataIndex = {};
@@ -123,8 +138,8 @@ void Game::Initialize(HWND window, int width, int height) {
 	device->CreateBuffer(&bufferDescIndex, &subresourceDataIndex, indexBuffer.ReleaseAndGetAddressOf());*/
 
 	// Matrix transformation
-	cube.modelData.Create(m_deviceResources.get());
-	cube.modelData.m_data.mModel = Matrix::CreateTranslation(Vector3(-0.5, -0.5, 0.5)).Transpose();
+	//cube.modelData.Create(m_deviceResources.get());
+	//cube.modelData.m_data.mModel = Matrix::CreateTranslation(Vector3(-0.5, -0.5, 0.5)).Transpose();
 	//modelData.mModel = Matrix::Identity;
 	
 	/*CD3D11_BUFFER_DESC bufferDescModel(sizeof(CameraData), D3D11_BIND_CONSTANT_BUFFER);
@@ -132,11 +147,9 @@ void Game::Initialize(HWND window, int width, int height) {
 	subresourceDataModel.pSysMem = &modelData;
 	device->CreateBuffer(&bufferDescModel, &subresourceDataModel, modelBuffer.ReleaseAndGetAddressOf());*/
 
-	cameraBuffer.Create(m_deviceResources.get());
-	CameraData cameraData;
-	cameraData.mView = Matrix::CreateLookAt(Vector3(0, 0, cameraDistance), Vector3(0, 0, 0), Vector3::Up).Transpose();
-	cameraData.mProjection = Matrix::CreatePerspectiveFieldOfView(90, static_cast<float>(width) / height, 0.1, 1000.0).Transpose();
-	cameraBuffer.m_data = cameraData;
+	camera.UpdateAspectRatio(static_cast<float>(width) / static_cast<float>(height));
+
+	texture.Apply(m_deviceResources.get());
 	
 	/*cameraBuffer.Update(m_deviceResources.get(), )
 		CD3D11_BUFFER_DESC bufferDescCamera(sizeof(CameraData), D3D11_BIND_CONSTANT_BUFFER);
@@ -156,10 +169,8 @@ void Game::Tick() {
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer) {
 	auto const kb = m_keyboard->GetState();
-	auto const ms = m_mouse->GetState();
 
-	cameraRotation += cameraSpeed*timer.GetElapsedSeconds();
-	cameraBuffer.m_data.mView = Matrix::CreateLookAt(Vector3(cameraDistance*cos(cameraRotation), 0, cameraDistance*sin(cameraRotation)), Vector3(0, 0, 0), Vector3::Up).Transpose();
+	camera.Update(timer.GetElapsedSeconds(), kb, m_mouse.get());
 	
 	// add kb/mouse interact here
 	
@@ -191,6 +202,8 @@ void Game::Render() {
 	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 	
 	basicShader->Apply(m_deviceResources.get());
+	
+	camera.ApplyCamera(m_deviceResources.get());
 
 	// TP: Tracer votre vertex buffer ici
 	/*ID3D11Buffer* vbs[] = { vertexBuffer.Get() };
@@ -198,22 +211,30 @@ void Game::Render() {
 	UINT offsets[] = { 0 };
 	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);*/
 
+	for (Cube& chunk : cubes) 
+	{
+		// Update matrix
+		chunk.modelData.Update(m_deviceResources.get());
+		chunk.modelData.ApplyToVS(m_deviceResources.get(), 0);
+		//m_constantBufferModel.Data.Model = chunk.modelData.m_data.mModel.Transpose();
+		chunk.Draw(m_deviceResources.get());
+
+	}
+
 	//vertexBuffer.Apply(m_deviceResources.get());
-	cube.Apply(m_deviceResources.get());
+	//cube.Apply(m_deviceResources.get());
 	//indexBuffer.Apply(m_deviceResources.get());
 
-	cube.modelData.Update(m_deviceResources.get());
-	cameraBuffer.Update(m_deviceResources.get());
+	//cube.modelData.Update(m_deviceResources.get());
 
-	cube.modelData.ApplyToVS(m_deviceResources.get());
-	cameraBuffer.ApplyToVS(m_deviceResources.get(), 1);
+	//cube.modelData.ApplyToVS(m_deviceResources.get());
 	/*m_deviceResources->GetD3DDeviceContext()->UpdateSubresource(cameraBuffer.Get(), 0, nullptr, &cameraData,0, 0);
 	
 	ID3D11Buffer* cbs[] = { modelBuffer.Get(), cameraBuffer.Get() };
 	context->VSSetConstantBuffers(0, 2, cbs);*/
 
 	
-	context->DrawIndexed(cube.indexBuffer.Size(), 0, 0);
+	//context->DrawIndexed(cubes.size() * cubes[0].indexBuffer.Size(), 0, 0);
 	
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
@@ -246,7 +267,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
-	cameraBuffer.m_data.mProjection = Matrix::CreatePerspectiveFieldOfView(90, static_cast<float>(width) / height, 0.1, 1000.0).Transpose();
+	camera.UpdateAspectRatio(static_cast<float>(width) / static_cast<float>(height));
 }
 
 void Game::OnDeviceLost() {
