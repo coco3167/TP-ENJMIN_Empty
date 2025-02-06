@@ -7,11 +7,13 @@
 
 #include <iostream>
 
+#include "Block.h"
 #include "PerlinNoise.hpp"
 #include "Engine/Shader.h"
 #include "Buffers.h"
 #include "Camera.h"
-#include "Cube.h"
+#include "Chunk.h"
+#include "World.h"
 #include "Engine/Texture.h"
 #include "Engine/VertexLayout.h"
 
@@ -30,10 +32,10 @@ Shader* basicShader;
 //VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
 //IndexBuffer indexBuffer;
 
-Camera camera(90,1);
+Camera camera(60,1);
 
 ComPtr<ID3D11InputLayout> inputLayout;
-std::vector<Cube> cubes;
+World world;
 Texture texture(L"terrain");
 
 float cameraDistance = 2.0f;
@@ -92,21 +94,7 @@ void Game::Initialize(HWND window, int width, int height) {
 		0.5f, 0.5f, 0.0f,
 	};*/
 
-	for (int x = -5; x < 5; ++x)
-	{
-		for (int y = -5; y < 5; ++y)
-		{
-			for (int z = -5; z < 5; ++z)
-			{
-				Cube& newChunk = cubes.emplace_back();
-				newChunk.Generate(Vector3{x * 2.0f, y * 2.0f, z * 2.0f });
-				newChunk.Create(m_deviceResources.get());
-
-				newChunk.modelData.Create(m_deviceResources.get());
-				newChunk.modelData.m_data.mModel = Matrix::CreateTranslation(Vector3(-0.5, -0.5, 0.5)).Transpose();
-			}
-		}
-	}
+	world.Generate(m_deviceResources.get(), 2);
 
 	//cube.Generate(Vector3(0,0,0));
 	//cube.Create(m_deviceResources.get());
@@ -211,15 +199,8 @@ void Game::Render() {
 	UINT offsets[] = { 0 };
 	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);*/
 
-	for (Cube& chunk : cubes) 
-	{
-		// Update matrix
-		chunk.modelData.Update(m_deviceResources.get());
-		chunk.modelData.ApplyToVS(m_deviceResources.get(), 0);
-		//m_constantBufferModel.Data.Model = chunk.modelData.m_data.mModel.Transpose();
-		chunk.Draw(m_deviceResources.get());
-
-	}
+	// Update matrix
+	world.Render(m_deviceResources.get());
 
 	//vertexBuffer.Apply(m_deviceResources.get());
 	//cube.Apply(m_deviceResources.get());

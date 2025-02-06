@@ -10,7 +10,7 @@ Camera::Camera(float fov, float aspectRatio) : fov(fov) {
 	view = Matrix::CreateLookAt(camPos, Vector3::Forward, Vector3::Up);
 	//view = Matrix::CreateFromQuaternion(camRot);
 	//view.Translation(camPos);
-	projection = Matrix::CreatePerspectiveFieldOfView(fov, aspectRatio, nearPlane, farPlane);
+	projection = Matrix::CreatePerspectiveFieldOfView(fov*XM_PI/180, aspectRatio, nearPlane, farPlane);
 }
 
 Camera::~Camera() {
@@ -19,7 +19,7 @@ Camera::~Camera() {
 }
 
 void Camera::UpdateAspectRatio(float aspectRatio) {
-	projection = Matrix::CreatePerspectiveFieldOfView(fov, aspectRatio, 0.1, 1000.0);
+	projection = Matrix::CreatePerspectiveFieldOfView(fov*XM_PI/180, aspectRatio, 0.1, 1000.0);
 }
 
 void Camera::Update(float dt, Keyboard::State kb, Mouse* mouse) {
