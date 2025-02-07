@@ -19,6 +19,7 @@
 	F( LOG,					20, 21, 21 ) \
 	F( SPONGE,				48 ) \
 	F( WOOL,				64 ) \
+	F( SNOW,				68, 66, 2) \
 /* ORE */ \
 	F( COAL,				34 ) \
 	F( IRON_ORE,			33 ) \

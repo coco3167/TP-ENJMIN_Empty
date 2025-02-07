@@ -16,6 +16,8 @@ public:
     
     void Create(DeviceResources* deviceResources)
     {
+        if (data.size() == 0)
+            return;
         CD3D11_BUFFER_DESC bufferDescVertex(data.size()*sizeof(TVertex), D3D11_BIND_VERTEX_BUFFER);
         D3D11_SUBRESOURCE_DATA subresourceDataVertex = {};
         subresourceDataVertex.pSysMem = data.data();
@@ -51,6 +53,8 @@ public:
 
     void Create(DeviceResources* deviceResources)
     {
+        if (m_indices.size() == 0)
+            return;
         CD3D11_BUFFER_DESC bufferDescIndex(Size()*sizeof(uint32_t), D3D11_BIND_INDEX_BUFFER);
         D3D11_SUBRESOURCE_DATA subresourceDataIndex = {};
         subresourceDataIndex.pSysMem = m_indices.data();
@@ -79,6 +83,8 @@ class ConstantBuffer
 
     void Update(DeviceResources* deviceResources)
     {
+        if (m_buffer.Get() == nullptr)
+            return;
         deviceResources->GetD3DDeviceContext()->UpdateSubresource(m_buffer.Get(), 0, nullptr, &m_data, 0, 0);
     }
 

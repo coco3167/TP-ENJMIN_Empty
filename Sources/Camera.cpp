@@ -7,7 +7,7 @@ using namespace DirectX::SimpleMath;
 
 Camera::Camera(float fov, float aspectRatio) : fov(fov) {
 	// TP initialiser matrices
-	view = Matrix::CreateLookAt(camPos, Vector3::Forward, Vector3::Up);
+	view = Matrix::CreateLookAt(camPos, Vector3::Zero, Vector3::Up);
 	//view = Matrix::CreateFromQuaternion(camRot);
 	//view.Translation(camPos);
 	projection = Matrix::CreatePerspectiveFieldOfView(fov*XM_PI/180, aspectRatio, nearPlane, farPlane);
@@ -23,7 +23,7 @@ void Camera::UpdateAspectRatio(float aspectRatio) {
 }
 
 void Camera::Update(float dt, Keyboard::State kb, Mouse* mouse) {
-	float camSpeedRot = 0.25f;
+	float camSpeedRot = 0.2f;
 	float camSpeedMouse = 10.0f;
 	float camSpeed = 15.0f;
 	if (kb.LeftShift) camSpeed *= 2.0f;
@@ -64,8 +64,8 @@ void Camera::Update(float dt, Keyboard::State kb, Mouse* mouse) {
 
         } else if (mstate.leftButton) {
 			// TP Rotate camera a partir de dx/dy
-        	camRot *= Quaternion::CreateFromAxisAngle(Vector3::Up, -dx*dt*camSpeedRot);
         	camRot *= Quaternion::CreateFromAxisAngle(Vector3::TransformNormal(Vector3::Right, im), -dy*dt*camSpeedRot);
+        	camRot *= Quaternion::CreateFromAxisAngle(Vector3::Up, -dx*dt*camSpeedRot);
         } else {
             mouse->SetMode(Mouse::MODE_ABSOLUTE);
         }
@@ -79,9 +79,14 @@ void Camera::Update(float dt, Keyboard::State kb, Mouse* mouse) {
 
 	camPos += newForward*zoomVertical;
 	camPos += newRight*zoomHorizontal;
-
+	
 	// TP updater matrice view
 	view = Matrix::CreateLookAt(camPos, camPos+newForward, newUp);
+
+	BoundingFrustum::CreateFromMatrix(m_boundingFrustrum, projection, true);
+	m_boundingFrustrum.Transform(m_boundingFrustrum, view.Invert());
+
+	time += dt;
 }
 
 void Camera::ApplyCamera(DeviceResources* deviceRes) {
@@ -92,6 +97,7 @@ void Camera::ApplyCamera(DeviceResources* deviceRes) {
 	cbCamera->m_data = MatrixData();
 	cbCamera->m_data.mProjection = projection.Transpose();
 	cbCamera->m_data.mView = view.Transpose();
+	cbCamera->m_data.time = time;
 	cbCamera->Update(deviceRes);
 	cbCamera->ApplyToVS(deviceRes, 1);
 

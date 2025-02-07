@@ -14,6 +14,7 @@
 #include "Camera.h"
 #include "Chunk.h"
 #include "World.h"
+#include "Engine/BlendState.h"
 #include "Engine/Texture.h"
 #include "Engine/VertexLayout.h"
 
@@ -27,6 +28,7 @@ using Microsoft::WRL::ComPtr;
 
 // Global stuff
 Shader* basicShader;
+Shader* waterShader;
 
 
 //VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
@@ -38,6 +40,8 @@ ComPtr<ID3D11InputLayout> inputLayout;
 World world;
 Texture texture(L"terrain");
 
+BlendState opaqueBlendState, alphaBlendState;
+
 float cameraDistance = 2.0f;
 float cameraRotation = 0.0f;
 float cameraSpeed = 1.f;
@@ -45,12 +49,13 @@ float cameraSpeed = 1.f;
 
 // Game
 Game::Game() noexcept(false) {
-	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_D32_FLOAT, 2);
+	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT, 2);
 	m_deviceResources->RegisterDeviceNotify(this);
 }
 
 Game::~Game() {
 	delete basicShader;
+	delete waterShader;
 	g_inputLayouts.clear();
 }
 
@@ -69,6 +74,9 @@ void Game::Initialize(HWND window, int width, int height) {
 	basicShader = new Shader(L"Basic");
 	basicShader->Create(m_deviceResources.get());
 
+	waterShader = new Shader(L"Water");
+	waterShader->Create(m_deviceResources.get());
+
 	auto device = m_deviceResources->GetD3DDevice();
 
 	texture.Create(m_deviceResources.get());
@@ -85,6 +93,11 @@ void Game::Initialize(HWND window, int width, int height) {
 	};*/
 
 	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
+	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), waterShader);
+	opaqueBlendState = BlendState();
+	alphaBlendState = BlendState(D3D11_BLEND_SRC_COLOR, D3D11_BLEND_DEST_COLOR, D3D11_BLEND_OP_ADD, D3D11_BLEND_SRC1_ALPHA, D3D11_BLEND_DEST_ALPHA, D3D11_BLEND_OP_ADD);
+	opaqueBlendState.Create(m_deviceResources.get());
+	alphaBlendState.Create(m_deviceResources.get());
 	
 	/*std::vector<float> vertexArray =
 	{
@@ -94,7 +107,7 @@ void Game::Initialize(HWND window, int width, int height) {
 		0.5f, 0.5f, 0.0f,
 	};*/
 
-	world.Generate(m_deviceResources.get(), 2);
+	world.Generate(m_deviceResources.get());
 
 	//cube.Generate(Vector3(0,0,0));
 	//cube.Create(m_deviceResources.get());
@@ -200,7 +213,12 @@ void Game::Render() {
 	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);*/
 
 	// Update matrix
-	world.Render(m_deviceResources.get());
+	opaqueBlendState.Apply(m_deviceResources.get());
+	world.RenderOpaque(m_deviceResources.get(), camera);
+
+	waterShader->Apply(m_deviceResources.get());
+	alphaBlendState.Apply(m_deviceResources.get());
+	world.RenderAlpha(m_deviceResources.get(), camera);
 
 	//vertexBuffer.Apply(m_deviceResources.get());
 	//cube.Apply(m_deviceResources.get());
